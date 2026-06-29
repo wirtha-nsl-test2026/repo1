@@ -1,0 +1,34 @@
+name: Debug Context & OIDC
+
+on:
+  pull_request:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  debug-context:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Version marker
+        run: echo "RUNNING_WORKFLOW_VERSION=BASE-MAIN-LEGITIMATE"
+
+      - name: Dump full GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT" | jq .
+
+      - name: Dump event payload
+        run: jq . "$GITHUB_EVENT_PATH"
+
+      - name: Debug OIDC claims
+        shell: bash
+        env:
+          AUDIENCE: '${{ github.server_url }}/${{ github.repository }}'
+        run: |
+          echo "ACTIONS_ID_TOKEN_REQUEST_URL is: [${ACTIONS_ID_TOKEN_REQUEST_URL:-<empty>}]"
+          echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN is set: $([ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ] && echo yes || echo no)"
+          TOKEN_JSON=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUDIENCE")
+          ID_TOKEN=$(echo "$TOKEN_JSON" | jq -r .value)
+          echo "$ID_TOKEN" | awk -F. '{print $2}' | base64 -d 2>/dev/null | jq -r
